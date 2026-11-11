@@ -1,0 +1,395 @@
+@{
+    # ALM for Dataverse configuration
+    #
+    # Paths in this file are relative to the directory this file is in (the repo root).
+    #
+    # FORK CONFIGURATION:
+    # To customize defaults in a fork, edit alm-config-defaults.psd1
+    # in the ALM4Dataverse repository root.
+    # Fork configuration is merged with this file (this file's values take precedence).
+    # Arrays append this file's items after defaults; hashtables are merged recursively.
+    # This allows forks to add custom defaults without modifying this template.
+    #
+    # HOOK SCRIPT PATHS AND [ALM] REPLACEMENT:
+    # Hook script paths can use the [alm] placeholder to reference the ALM4Dataverse
+    # repository root. For example:
+    #   '[alm]/custom-hooks/myScript.ps1' -> executes the script from the fork's copy of ALM4Dataverse
+    # This is useful for running custom hook scripts provided by the ALM4Dataverse fork.
+    # The placeholder is replaced with the absolute path to the ALM repo root before execution.
+
+    # Solutions to process, in dependency order.
+    # Each entry is a hashtable with keys
+    # - name: unique solution name.
+    # - deployUnmanaged: (optional) boolean indicating whether to deploy unmanaged version.
+    # - mappings: (optional) ordered SolutionPackager directives used by BUILD and EXPORT.
+    #   Each item can include a buildCommand that runs before packing during BUILD.
+    # - serviceAccountUpnConfigKey: (optional) name of the environment configuration key containing
+    #   the service account UPN to use when activating processes in this solution.
+    #   The default is 'DataverseServiceAccountUpn'
+    # - codeApps: (optional) code app project paths relative to the repository root.
+    #   Each project is built using npm ci / npm run build. BUILD/IMPORT artifacts
+    #   contain only power.config.json and the configured buildPath output; project
+    #   metadata, dependencies, secrets, certificates and linked paths are excluded.
+    #   Files inside buildPath with secret- or key-like names fail the build; the
+    #   codeApps entry in docs/config/alm-config.md lists them. By default, built files
+    #   replace the existing Code App component in this solution before import, so
+    #   the app must already be included in the solution package. This avoids the
+    #   broader Power Platform API RBAC assignment required by PAC push.
+    # - codeAppPublishMethod: (optional, default 'solution') use 'pac' to push after
+    #   import with PAC CLI. This requires a suitable Power Platform API RBAC role;
+    #   Dataverse application-user permissions alone don't grant access to that API.
+    # - solutionCheck: (optional) per-solution PAC checker settings merged with global solutionCheck
+    #   settings below. Use enabled = $false to skip checker for a specific solution.
+    #
+    ### BEGIN TTEC Digital-specific solution settings
+    # - validationMode: (optional) 'error' (default), 'warning', or 'disabled' for solution validation rules.
+    # - skipValidationRules: (optional) array of maps with required ruleName and mode ('skip', 'warning', or 'error').
+    #   Optional componentType (integer), componentId (GUID), and componentSchemaName (string) target components.
+    #   See ttec-digital/docs/solution-validation.md#component-specific-configuration.
+    ### END TTEC Digital-specific solution settings
+    solutions = @(
+        @{
+            name = 'TestSolution1'
+        }
+        @{
+            name = 'TestSolution2'
+        }
+    )
+
+    # Organization-table columns applied before deployment.
+    # Example: @{ IsCustomControlsInCanvasAppsEnabled = $true }
+    # Column names: https://learn.microsoft.com/en-us/power-apps/developer/data-platform/reference/entities/organization
+    # Schema names are normalized to the lowercase logical names required by the Dataverse settings cmdlet.
+    # Use supported settings: https://learn.microsoft.com/en-us/power-apps/developer/data-platform/organization-table
+    # Values may be static or trusted scriptblocks emitting exactly one value.
+    # Scriptblocks receive $Context = @{ HookType; BaseDirectory; Config; ArtifactsPath; UseUnmanagedSolutions }.
+    organizationSettings = @{}
+
+    # Azure management partner linked to the Azure identity before solution imports.
+    # Set to an empty string to disable partner-link management.
+    partnerId = 6479631
+
+    # Organization-table columns applied after the postDeploy hook.
+    # Example: @{ IsCustomControlsInCanvasAppsEnabled = $false }
+    # Schema names are normalized to the lowercase logical names required by the Dataverse settings cmdlet.
+    # Values may be static or trusted scriptblocks emitting exactly one value.
+    # Scriptblocks receive $Context = @{ HookType; BaseDirectory; Config; ArtifactsPath; UseUnmanagedSolutions }.
+    postDeployOrganizationSettings = @{}
+
+    # OrgDbOrgSettings entries applied before deployment.
+    # Example: @{ IsLockDownOfUnmanagedCustomizationEnabled = $false }
+    # Setting names and types: https://github.com/seanmcne/OrgDbOrgSettings/blob/master/mspfedyn_/OrgDbOrgSettings/Solution/WebResources/mspfedyn_/OrgDbOrgSettings/Settings.xml
+    # Values may be static or trusted scriptblocks emitting exactly one value.
+    # Scriptblocks receive $Context = @{ HookType; BaseDirectory; Config; ArtifactsPath; UseUnmanagedSolutions }.
+    orgDbOrgSettings = @{}
+
+    # OrgDbOrgSettings entries applied after the postDeploy hook.
+    # Example: @{ IsLockDownOfUnmanagedCustomizationEnabled = $true }
+    # Values may be static or trusted scriptblocks emitting exactly one value.
+    # Scriptblocks receive $Context = @{ HookType; BaseDirectory; Config; ArtifactsPath; UseUnmanagedSolutions }.
+    postDeployOrgDbOrgSettings = @{}
+
+    # Power Platform Environment Management API settings applied before deployment.
+    # Example: @{ PowerApps_AllowCodeApps = $true }
+    # No complete setting catalog is available; inspect the setting's request in the PPAC browser Network tab.
+    # Power Platform RBAC roles are currently available only at tenant scope; assign an appropriate role to the authenticated identity:
+    # AZURE_CLIENT_SECRET is used when configured; otherwise DefaultAzureCredential supports WIF, managed identity, and Azure CLI.
+    # https://learn.microsoft.com/en-us/power-platform/admin/programmability-authentication-v2
+    # https://learn.microsoft.com/en-us/power-platform/admin/programmability-tutorial-rbac-role-assignment
+    # API and setting model:
+    # https://learn.microsoft.com/en-us/rest/api/power-platform/environmentmanagement/environment-management-settings
+    # https://learn.microsoft.com/en-us/dotnet/api/microsoft.powerplatform.management.models.environmentmanagementsetting?view=power-platform-latest
+    # Values may be static or trusted scriptblocks emitting exactly one value.
+    # Scriptblocks receive $Context = @{ HookType; BaseDirectory; Config; ArtifactsPath; UseUnmanagedSolutions; EnvironmentId }.
+    powerPlatformSettings = @{}
+
+    # Power Platform Environment Management API settings applied after the postDeploy hook.
+    # Example: @{ PowerApps_AllowCodeApps = $false }
+    # Uses the same API, setting-name discovery, RBAC scope, and identity options as powerPlatformSettings.
+    # Values may be static or trusted scriptblocks emitting exactly one value.
+    # Scriptblocks receive $Context = @{ HookType; BaseDirectory; Config; ArtifactsPath; UseUnmanagedSolutions; EnvironmentId }.
+    postDeployPowerPlatformSettings = @{}
+
+    # Node.js version used only when BUILD or IMPORT includes configured codeApps.
+    # A major version (for example '22') accepts an installed compatible release or installs the latest stable patch.
+    # An exact version (for example '22.14.0') pins the release.
+    # nodeVersion = '22'
+
+    # BUILD SemVer settings. PATCH is the CI run number and every build keeps its
+    # normalized branch name as a prerelease suffix (for example 1.0.42-main).
+    # MAJOR.MINOR also maps to solution Major.Build; solution Minor tracks upgrades.
+    buildVersion = @{
+        # MAJOR.MINOR used for branches without a specific entry.
+        default = '1.0'
+
+        # Keys are full branch names; values are MAJOR.MINOR.
+        branches = @{
+            main = '1.0'
+            # 'develop' = '1.1'
+            # 'release/1.x' = '1.0'
+        }
+    }
+
+    # Export limits count package operations, including managed and unmanaged
+    # packages of one solution. Both limits accept 1..8; hooks are not throttled.
+    # Missing/null/empty settings use defaults; explicit parallel = $false is kept.
+    export = @{
+        parallel = $true
+        maxParallel = 2
+        maxConcurrentOperations = 4
+    }
+
+    # Build-command and packing stages each use maxParallel (1..8), independently
+    # of solutionCheck.maxParallel. parallel = $false makes both stages sequential.
+    build = @{
+        parallel = $true
+        maxParallel = 2
+        versionCollisionGuard = $true
+    }
+
+    # Extra folders/files to include in build artifacts (copied verbatim).
+    assets = @(
+        'data'
+    )
+
+    # Hook scripts executed by the pipeline scripts.
+    #
+    # Each hook is a list of script paths (relative to repo/artifact root).
+    # Hooks are optional; leave them empty (@()) when not needed.
+    #
+    # Hook scripts receive a -Context parameter with a hashtable containing:
+    # - HookType: the type of hook being executed
+    # - BaseDirectory: the base directory for the hook (source or artifacts root)
+    # - Config: the loaded alm-config.psd1 configuration
+    # - Additional context specific to the hook type (see details below)
+    #
+    # Hook-specific context:
+    #
+    # preBuild, postBuild:
+    #   - SourceDirectory: path to the source directory
+    #   - ArtifactStagingDirectory: path to the artifact staging directory
+    #
+    # preExport, postExport:
+    #   - SourceDirectory: path to the source directory
+    #   - ArtifactStagingDirectory: path to the artifact staging directory
+    #   - TempDirectory: path to temporary directory for export operations
+    #   - EnvironmentName: name of the Dataverse environment being exported from
+    #
+    # preExportSolution, parallelExportSolution, postExportSolution:
+    #   - SourceDirectory, ArtifactStagingDirectory, TempDirectory, EnvironmentName
+    #   - SolutionName, SolutionConfig, SolutionIndex
+    #   - Connection: the cloned Dataverse connection for this hook; it is the default in parallel workers
+    #   - OperationBudget and CancellationToken: available for parallel exports
+    #
+    # postExport additionally receives SolutionHookResults and
+    # ParallelExportSolutionHookResults, keyed by solution name.
+    #
+    # preDeploy, dataMigrations, postDeploy:
+    #   - ArtifactsPath: path to the artifacts directory
+    #   - UseUnmanagedSolutions: boolean indicating if unmanaged solutions are being deployed
+    #
+    hooks = @{
+        # Called by `pipelines/scripts/export.ps1` before exporting solutions.
+        preExport  = @()
+
+        # Called before each solution's export begins.
+        preExportSolution = @()
+
+        # Started alongside each solution's package exports; EXPORT waits for it
+        # before unpacking that solution. Runs synchronously when export is sequential.
+        parallelExportSolution = @()
+
+        # Called after each solution is unpacked and compared. In parallel export mode,
+        # hooks for different solutions run concurrently with the remaining exports.
+        postExportSolution = @()
+
+        # Called by `pipelines/scripts/export.ps1` after exporting/unpacking/version bump logic.
+        postExport = @(
+            'data/system/export.ps1'
+        )
+
+        # Called by `pipelines/scripts/deploy.ps1` before staging/importing solutions.
+        preDeploy  = @()
+
+        # Called by `pipelines/scripts/deploy.ps1` after publish customizations.
+        postDeploy = @(
+            'data/system/import.ps1'
+        )
+
+        # Called by `pipelines/scripts/build.ps1` before packing solutions.
+        preBuild   = @()
+
+        # Called by `pipelines/scripts/build.ps1` after packing solutions/copying assets.
+        postBuild  = @()
+
+        # Called by `pipelines/scripts/deploy.ps1` after solutions are staged but before upgrades.
+        # Use this for data migration scripts (e.g., moving data from one column to another before they disappear).
+        dataMigrations = @()
+    }
+
+    # PowerShell modules required by the scripts in addition to the default modules.
+    # or to override with specific versions.
+
+    # Key = module name,
+    # Value = version ('' = latest stable version, 'prerelease' = latest prerelease, or specific version).
+    scriptDependencies = @{
+        # Example:
+        # 'PnP.PowerShell' = '1.12.0'
+    }
+
+    # Power Apps CLI version used by pipeline scripts.
+    # Optional override. Defaults from ALM4Dataverse are used when omitted.
+    # Supports: '' (latest stable), 'prerelease', or a specific version.
+    # pacCliVersion = '2.13.1'
+
+    # Timeout in seconds for each solution import operation (default: 10800).
+    # Increase this value if solution imports time out in large or complex environments.
+    # importTimeoutSeconds = 10800
+
+    # Optional BUILD validation baseline.
+    # Empty string deploys only the current build; an Azure DevOps BUILD run ID
+    # or build number, or GitHub BUILD run ID/release tag selects a fixed baseline.
+    # GitHub run IDs resolve to Release assets, not expiring Actions artifacts.
+    # '@environment-name' selects the most recently successful BUILD release
+    # deployed to that environment.
+    buildValidation = @{
+        baselineRelease = ''
+    }
+
+    # PAC solution check settings used by BUILD.
+    # Set enabled = $true globally or per-solution to activate checks.
+    # Per-solution settings are merged with these global settings.
+    #
+    # Supported severities for failThreshold and OverrideLevel:
+    # Critical, High, Medium, Low, Informational.
+    #
+    # ruleSet values:
+    # - 'Solution Checker' (default)
+    # - 'AppSource Certification'
+    # - GUID
+    # - 'none' (do not pass --ruleSet)
+    #
+    # solutionCheck = @{
+    #     enabled = $true
+    #     geo = 'Europe'
+    #     failThreshold = 'Critical'
+    #     ruleSet = 'Solution Checker'
+    #     excludedFiles = @(
+    #         'WebResources/**/*.png'
+    #     )
+    #     ruleLevelOverride = @(
+    #         @{ Id = 'meta-remove-dup-reg'; OverrideLevel = 'Medium' }
+    #     )
+    #     maxParallel = 4
+    # }
+
+    ### BEGIN TTEC Digital-specific configuration
+    # Optional values consumed by the bundled TTEC hooks; empty values are inactive.
+
+    # LEGACY: Prefer data hooks and the standard data asset workflow for new projects;
+    # see docs/config/example-hooks/data-import-export.md.
+    # Array form exports/deploys each named data folder. Map form sets the deployment stage.
+    # DataSets = @('configuration', 'reference')
+    # DataSets = @{ configuration = @{ Stage = 'BeforeTeams' }; reference = @{} }
+    DataSets = @()
+
+    # LEGACY: Set environment-specific values with DATAVERSEENVVAR_<schema-name> variables instead.
+    # Schema name -> default value; DATAVERSEENVVAR_<schema-name> overrides it.
+    # DefaultEnvVarValues = @{ contoso_DefaultRegion = 'west' }
+    DefaultEnvVarValues = @{}
+
+    # Artifact-relative packages imported before/after data and team operations.
+    # DependencySolutions = @('solutions/ContosoShared_managed.zip')
+    DependencySolutions = @()
+
+    # PostDependencySolutions = @('solutions/ContosoReporting_managed.zip')
+    PostDependencySolutions = @()
+
+    # ExternalDependencySolutionNames = @('ContosoShared')
+    ExternalDependencySolutionNames = @()
+
+    # ExternalDependencySolutionNames = @('ContosoShared')
+    # IgnoreSolutions = @('ContosoLegacy')
+    IgnoreSolutions = @()
+
+    # LEGACY: Use organizationSettings or orgDbOrgSettings for the shared settings capability;
+    # see docs/config/alm-config.md#organization-settings.
+    # Organization-table logical attribute name -> value, applied by preDeploy.
+    # OrgSettings = @{ isexternalsearchindexenabled = $true }
+    OrgSettings = @{}
+
+    # Team entries identify the business unit, team and role names; an empty
+    # BusinessUnitName selects the root business unit. IDs must be GUIDs.
+    # AadGroupId may use a $(Name) placeholder backed by CONFIG_Name.
+    # AadGroupTeams = @(
+    #     @{ BusinessUnitName = ''; TeamId = '00000000-0000-0000-0000-000000000001'; TeamName = 'Managers'; AadGroupId = '$(ManagersGroupId)'; RoleNames = @('Basic User') }
+    # )
+    AadGroupTeams = @()
+
+    # Access teams use BusinessUnitName, TeamId and TeamName.
+    # AccessTeams = @(@{ BusinessUnitName = ''; TeamId = '00000000-0000-0000-0000-000000000002'; TeamName = 'Case Readers' })
+    AccessTeams = @()
+
+    # ApplicationId, BusinessUnitName and RoleNames; ApplicationId supports $(Name).
+    # ApplicationUsers = @(@{ ApplicationId = '$(IntegrationAppId)'; BusinessUnitName = ''; RoleNames = @('Basic User') })
+    ApplicationUsers = @()
+
+    # BusinessUnitName and RoleNames; empty BusinessUnitName selects the root BU.
+    # BuDefaultTeams = @(@{ BusinessUnitName = ''; RoleNames = @('Basic User') })
+    BuDefaultTeams = @()
+
+    # Canvas app UniqueName and AadGroupIds; configured groups replace existing sharing.
+    # CanvasAppSharing = @(@{ UniqueName = 'contoso_customerportal'; AadGroupIds = @('$(ReadersGroupId)') })
+    CanvasAppSharing = @()
+
+    # Flow WorkflowId and AadGroupIds; configured groups replace existing sharing.
+    # FlowSharing = @(@{ WorkflowId = '00000000-0000-0000-0000-000000000003'; AadGroupIds = @('$(ReadersGroupId)') })
+    FlowSharing = @()
+
+    # Owner teams use BusinessUnitName, TeamId, TeamName and RoleNames.
+    # OwnerTeams = @(@{ BusinessUnitName = ''; TeamId = '00000000-0000-0000-0000-000000000004'; TeamName = 'Case Owners'; RoleNames = @('Basic User') })
+    OwnerTeams = @()
+
+    # PluginStepId and SecureConfig; SecureConfig supports $(Name) placeholders.
+    # PluginSteps = @(@{ PluginStepId = '00000000-0000-0000-0000-000000000005'; SecureConfig = '$(PluginSecret)' })
+    PluginSteps = @()
+
+    # LEGACY: Use solution-aware Power Pages deployment instead of this separate portal map;
+    # see docs/usage/adding-dataverse-components.md#solutions.
+    # Portal unique name -> website ID. PORTALCONFIG_<name> supplies profile values.
+    # Portals = @{ customerportal = '00000000-0000-0000-0000-000000000006' }
+    Portals = @{}
+
+    # Synapse folder names and repository URL enable Synapse asset integration.
+    # See ttec-digital/docs/azure-synapse.md for complete examples.
+    # SynapseFolders = @('DataverseIntegration')
+    SynapseFolders = @()
+
+    # SynapseRepositoryUrl = 'https://dev.azure.com/example/project/_git/Synapse'
+    SynapseRepositoryUrl = ''
+
+    # Include/exclude wildcard patterns for linked services.
+    # SynapseLinkedServicesInclude = @('ls-dataverse-*')
+    SynapseLinkedServicesInclude = @()
+
+    # SynapseLinkedServicesExclude = @('*WorkspaceDefault*', 'ls-legacy-*')
+    SynapseLinkedServicesExclude = @()
+
+    # Each endpoint has Name and Definition; both support $(Name) deployment placeholders.
+    # SynapseManagedPrivateEndpoints = @(
+    #     @{ Name = 'endpoint-example'; Definition = '{"type":"Microsoft.Synapse/workspaces/managedVirtualNetworks/managedPrivateEndpoints","properties":{"privateLinkResourceId":"$(DataverseResourceId)","groupId":"dataverse"}}' }
+    # )
+    SynapseManagedPrivateEndpoints = @()
+
+    # Validation rule settings are independent of the PAC solutionCheck settings above.
+    # maxParallel accepts 1..8; parallel = $false runs rules sequentially.
+    validation = @{
+        parallel = $true
+        maxParallel = 4
+    }
+    ### END TTEC Digital-specific configuration
+
+    solutionCheck = @{
+        enabled = $false
+    }
+}
