@@ -1,3 +1,7 @@
+# Setup generates this file from alm-config.psd1: direct edits are not supported.
+# Change alm-config.psd1, commit it, and apply it again (the APPLY-CONFIG workflow
+# or setup-github.ps1 -ApplyConfig) to regenerate this workflow.
+
 name: DEPLOY-main
 run-name: ${{ github.event_name == 'workflow_dispatch' && format('Deploy {0} <- {1}', github.event.inputs['target-environment'] || 'auto', github.event.inputs['build-run-name'] || format('latest from {0}', github.ref_name)) || format('Deploy auto <- run {0}', github.run_id) }}
 
@@ -58,6 +62,7 @@ jobs:
         uses: robwood-TTECDigital/Dataverse-ALM-Test4-Shared/.github/actions/deploy@main
         with:
           environment-name: 'prod'
+          shared-template-version: '2'
           previous-environment-name: ''
           promotion-mode: environment-approval
           trigger-branch: 'main'

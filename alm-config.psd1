@@ -392,4 +392,33 @@
     solutionCheck = @{
         enabled = $false
     }
+    'provider' = 'GitHub'
+    'repository' = 'robwood-TTECDigital/Dataverse-ALM-Test4-Shared'
+    'ref' = 'main'
+    'GitHubUseEnvironments' = $true
+    'GitHubDeploymentPromotionMode' = 'environment-approval'
+    'GitHubUseRepositoryVariablePrefix' = $true
+    'GitHubUseImmutableWifSubject' = $true
+    'branches' = @{
+    'develop' = @{
+        'developmentEnvironment' = 'Dev-develop'
+        'deploymentEnvironments' = @(
+            'test'
+        )
+        'buildValidation' = @{
+            'environmentName' = ''
+            'baselineRelease' = ''
+        }
+    }
+    'main' = @{
+        'developmentEnvironment' = 'Dev-main'
+        'deploymentEnvironments' = @(
+            'prod'
+        )
+        'buildValidation' = @{
+            'environmentName' = ''
+            'baselineRelease' = ''
+        }
+    }
+}
 }
