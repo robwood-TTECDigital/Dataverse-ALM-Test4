@@ -49,10 +49,7 @@
     ### END TTEC Digital-specific solution settings
     solutions = @(
         @{
-            name = 'TestSolution1'
-        }
-        @{
-            name = 'TestSolution2'
+            name = 'TestSolution3'
         }
     )
 
